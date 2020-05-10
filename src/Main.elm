@@ -3,30 +3,42 @@ module Main exposing (main)
 import Bootstrap.Navbar as Navbar
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Navigation
-import Html.Styled exposing (text, toUnstyled)
 import Message exposing (Message(..))
 import Model exposing (Model, Page(..))
 import Routing.Message
 import Routing.Page exposing (urlToPage)
-import Routing.Update
+import Update exposing (update)
 import Url exposing (Url)
 import View.About
+import View.Login
 import View.NotFound
 import View.Style exposing (toUnstyledDocument)
 import View.Template exposing (withTemplate)
+import View.UrlList
 
 
-init : () -> Url.Url -> Navigation.Key -> ( Model, Cmd Message )
-init _ url key =
+init : Flag -> Url.Url -> Navigation.Key -> ( Model, Cmd Message )
+init flag url key =
     let
         ( navBarState, navBarCmd ) =
             Navbar.initialState NavbarMessage
 
+        model : Model
         model =
             { navKey = key
             , navBarState = navBarState
             , page = NotFound
+            , token = flag.token
             , isLoading = False
+            , urlList =
+                { urls = []
+                , page = 0
+                , perPage = 10
+                }
+            , errorMessage = Nothing
+            , callbackUrl = flag.callbackUrl
+            , clientID = flag.clientID
+            , ok = True
             }
 
         ( nextModel, nextCmd ) =
@@ -49,29 +61,17 @@ view model =
                     View.NotFound.view
 
                 UrlList ->
-                    { title = "URLs"
-                    , body = [ text "List" ]
-                    }
+                    View.UrlList.view model
 
                 About ->
                     View.About.view
+
+                Login ->
+                    View.Login.view model
     in
     content
         |> withTemplate model
         |> toUnstyledDocument
-
-
-update : Message -> Model -> ( Model, Cmd Message )
-update msg model =
-    case msg of
-        NavbarMessage state ->
-            ( { model | navBarState = state }, Cmd.none )
-
-        RoutingMessage message ->
-            Routing.Update.update message model
-
-        None ->
-            ( model, Cmd.none )
 
 
 onUrlRequest : UrlRequest -> Message
@@ -90,7 +90,14 @@ subscriptions model =
     Navbar.subscriptions model.navBarState NavbarMessage
 
 
-main : Program () Model Message
+type alias Flag =
+    { token : Maybe String
+    , callbackUrl : String
+    , clientID : String
+    }
+
+
+main : Program Flag Model Message
 main =
     Browser.application
         { init = init

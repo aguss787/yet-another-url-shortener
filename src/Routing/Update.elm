@@ -22,6 +22,6 @@ update message model =
                 ( nextModel, nextCmd ) =
                     (urlToPage url).init model
             in
-            ( nextModel
+            ( { nextModel | ok = False }
             , nextCmd
             )
